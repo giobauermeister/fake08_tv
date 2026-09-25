@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/giobauermeister/fake08_tv" version="1.0.0" viewmodes="maximized" width="1920" height="1080">
+  <tizen:application id="Fake08Tv01.Fake08" package="Fake08Tv01" required_version="2.3"/>
+  <content src="index.html"/>
+  <name>FAKE-08</name>
+  <description>FAKE-08 cart player for .p8 and .p8.png carts, with gamepad support.</description>
+  <icon src="icon.png"/>
+  <tizen:profile name="tv-samsung"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+  <!-- internet + access: download carts from a PC on the LAN (tools/cart_server.py).
+       filesystem.read: read carts from USB drives. -->
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+  <access origin="*" subdomains="true"/>
+  <!-- 'unsafe-eval' lets engines that predate 'wasm-unsafe-eval' compile WebAssembly;
+       blob: is for the cart label images; connect-src * is for the LAN cart server. -->
+  <tizen:content-security-policy>default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src *</tizen:content-security-policy>
+</widget>

@@ -1,0 +1,21 @@
+# Build output
+build/
+app/fake08.js
+app/settings.js
+app/LICENSE
+app/LICENSE-FAKE-08.md
+app/THIRD-PARTY-NOTICES.md
+app/Debug/
+app/Release/
+app/.tizen-rds/
+*.wgt
+release/
+
+# Carts are never part of this repository or the app
+carts/
+
+# Signing material and machine-local tool state
+*.p12
+*.pem
+.sign/
+profiles.xml

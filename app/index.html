@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>FAKE-08</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="launcher">
+  <header>
+    <div>
+      <h1>FAKE-08</h1>
+      <p class="sub">Cart player</p>
+    </div>
+    <div class="status">
+      <div id="pad">Connect a Bluetooth gamepad</div>
+      <div id="sources"></div>
+    </div>
+  </header>
+  <div id="message" class="hidden"></div>
+  <div id="grid"></div>
+  <div id="empty" class="hidden">
+    <h2>No games yet</h2>
+    <p>This app comes without games. Add <code>.p8.png</code> or <code>.p8</code> carts in one of these ways,
+       one folder per game (the folder name is the title):</p>
+    <ul>
+      <li><b>USB drive:</b> a <code>PICO8</code> folder at the root of the drive, such as
+          <code>PICO8/Celeste/celeste.p8.png</code>. Plug it into the TV; it is read automatically.</li>
+      <li><b>TV Documents:</b> the same <code>PICO8</code> folder in the TV's Documents folder.</li>
+      <li><b>A PC on the same network:</b> run <code>python3 tools/cart_server.py &lt;folder&gt;</code>
+          from this app's source, then press Home and enter the address it prints under "PC with carts".</li>
+    </ul>
+    <p>Games appear here as soon as they are found.</p>
+  </div>
+  <footer>D-pad: choose &nbsp;·&nbsp; A: play &nbsp;·&nbsp; Home: settings &nbsp;·&nbsp; In a game: Home or remote Return opens the pause menu; hold Home 1.5 s to leave &nbsp;·&nbsp; Return here: exit</footer>
+</main>
+<div id="dialog" class="hidden">
+  <div class="box">
+    <h2>Settings</h2>
+    <div class="row" data-row="layout"><span class="name">Pad layout</span>
+      <span class="seg"><span data-v="nintendo">Nintendo · A = b1</span><span data-v="standard">Standard · A = b0</span></span></div>
+    <p class="note">Pressing now: <b id="padnow"></b>. If your A doesn't show "= A", pick the other layout.</p>
+    <div class="row" data-row="jump"><span class="name">Jump button 🅾️</span>
+      <span class="seg"><span data-v="BY">B / Y</span><span data-v="AX">A / X</span></span></div>
+    <div class="row" data-row="screen"><span class="name">Screen size</span>
+      <span class="seg"><span data-v="fill">Fill height</span><span data-v="pixel">Pixel-perfect 8×</span></span></div>
+    <div class="row" data-row="stats"><span class="name">Stats overlay (FPS, timings)</span>
+      <span class="switch"><i></i></span></div>
+    <div class="row" data-row="pc"><span class="name">PC with carts</span>
+      <input id="pcurl" type="text" spellcheck="false" autocomplete="off"></div>
+    <p class="note">Runs <code>tools/cart_server.py</code>, e.g. 192.168.1.20:8808. Choose the row and press A to type
+       it, OK to save; empty = build default (<span id="pcdefault"></span>).</p>
+    <div class="row button" data-row="close"><span class="name">Close</span></div>
+    <p class="note">Local carts (PICO8 folder on a USB drive or in the TV's Documents): <span id="usbstate"></span></p>
+    <p class="hint">▲ ▼ choose &nbsp;·&nbsp; ◀ ▶ pick &nbsp;·&nbsp; A (any face button) toggle / edit &nbsp;·&nbsp;
+       Home or remote Return: close</p>
+    <p class="note">FAKE-08 by Jon Bell and contributors; TV port by Giovanni Bauermeister. Both MIT licensed,
+       with third-party notices in the app package and at github.com/giobauermeister/fake08_tv.</p>
+  </div>
+</div>
+<canvas id="canvas" width="128" height="128" class="hidden"></canvas>
+<pre id="stats" class="hidden"></pre>
+<div id="status">Loading…</div>
+<script src="settings.js"></script>
+<script src="sources.js"></script>
+<script src="main.js"></script>
+<script src="fake08.js"></script>
+</body>
+</html>

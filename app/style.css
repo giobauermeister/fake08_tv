@@ -1,0 +1,68 @@
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: #fff1e8;
+  font-family: sans-serif; }
+.hidden { display: none !important; }
+
+#launcher { position: absolute; inset: 0; display: flex; flex-direction: column; background: #1d2b53; }
+header { display: flex; justify-content: space-between; align-items: flex-end; padding: 40px 72px 16px; }
+h1 { margin: 0; font-size: 64px; letter-spacing: 4px; color: #ffec27; }
+.sub { margin: 4px 0 0; font-size: 26px; color: #c2c3c7; }
+header .status { width: 1100px; max-width: 1100px; text-align: right; font-size: 22px; color: #c2c3c7; }
+#pad { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pad.connected { color: #00e436; }
+#sources { margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#message { margin: 0 72px; padding: 14px 20px; background: #7e2553; font-size: 24px; border-radius: 8px; }
+
+/* Cart labels are 160x205 images; shown at exactly 1.5x keeps them readable. */
+#grid { position: relative; flex: 1; overflow: hidden; display: flex; flex-wrap: wrap; align-content: flex-start;
+  justify-content: center; gap: 28px 40px; padding: 28px 72px; }
+.cart { position: relative; width: 240px; text-align: center; padding: 12px; border-radius: 12px; border: 4px solid transparent; }
+.cart em.tv { background: #008751; }
+.cart em { position: absolute; top: 4px; right: 4px; font: bold 20px sans-serif; font-style: normal; padding: 2px 10px;
+  border-radius: 6px; background: #ff004d; color: #fff1e8; }
+.cart img { width: 240px; height: 308px; image-rendering: pixelated; display: block; }
+.cart .nolabel { width: 240px; height: 308px; box-sizing: border-box; padding: 24px; display: flex; align-items: center;
+  justify-content: center; background: #5f574f; border-radius: 8px; font: bold 30px monospace; color: #fff1e8; }
+.cart span { display: block; margin-top: 10px; font-size: 22px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.cart.focus { border-color: #ffec27; background: #29366f; }
+footer { padding: 18px 72px 28px; font-size: 22px; color: #c2c3c7; }
+
+/* No carts found yet: how to add some. */
+#empty { flex: 1; margin: 12px 72px; padding: 8px 40px; font-size: 28px; line-height: 1.45; color: #fff1e8; }
+#empty h2 { margin: 12px 0 8px; font-size: 44px; color: #ffec27; }
+#empty ul { margin: 12px 0; padding-left: 36px; }
+#empty li { margin: 10px 0; }
+#empty code { font: 26px monospace; color: #ffec27; }
+
+/* The game: full screen height by default, or 8x (1024 px); see resizeCanvas(). */
+#canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+#status { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 32px;
+  color: #c2c3c7; white-space: pre-line; }
+
+/* Stats overlay: in the black margin left of the 1024 px game area. */
+#stats { position: absolute; left: 16px; top: 24px; margin: 0; width: 390px; font: 20px/1.35 monospace;
+  color: #00e436; white-space: pre-wrap; word-break: break-all; }
+
+#dialog { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; }
+#dialog .box { width: 1200px; padding: 32px 56px; background: #1d2b53; border: 4px solid #ffec27; border-radius: 16px; font-size: 26px; }
+#dialog h2 { margin: 0 0 16px; color: #ffec27; font-size: 40px; }
+#dialog input { flex: 1; margin-left: 32px; font: 30px monospace; padding: 8px 12px; }
+#dialog .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px;
+  margin: 6px 0; border: 3px solid transparent; border-radius: 10px; }
+#dialog .row.sel { border-color: #ffec27; background: #29366f; }
+#dialog .name { color: #ffec27; white-space: nowrap; }
+#dialog .value { text-align: right; margin-left: 32px; }
+#dialog .note { margin: 2px 18px 10px; font-size: 22px; color: #c2c3c7; }
+#dialog .hint { color: #c2c3c7; }
+
+/* Settings controls: two-option pills and an on/off switch. */
+#dialog .seg { display: flex; border: 2px solid #5f574f; border-radius: 10px; overflow: hidden; }
+#dialog .seg span { padding: 6px 18px; color: #c2c3c7; white-space: nowrap; }
+#dialog .seg span.on { background: #ffec27; color: #1d2b53; font-weight: bold; }
+#dialog .switch { position: relative; width: 84px; height: 42px; border-radius: 21px; background: #5f574f; }
+#dialog .switch i { position: absolute; top: 5px; left: 5px; width: 32px; height: 32px; border-radius: 50%;
+  background: #c2c3c7; transition: left 0.15s; }
+#dialog .switch.on { background: #00e436; }
+#dialog .switch.on i { left: 47px; background: #fff1e8; }
+#dialog .row.button { justify-content: center; }
+#dialog .row.button .name { color: #fff1e8; }

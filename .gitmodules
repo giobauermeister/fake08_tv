@@ -1,0 +1,4 @@
+[submodule "third_party/fake-08"]
+	path = third_party/fake-08
+	url = https://github.com/giobauermeister/fake-08.git
+	branch = tv-patches
