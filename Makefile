@@ -2,9 +2,9 @@
 #
 #   source ~/emsdk/emsdk_env.sh
 #   make -j$(nproc)      # -> app/fake08.js (engine, wasm inlined)
-#   make wgt             # + sign with the active profile -> FAKE-08.wgt (your own TV)
+#   make wgt             # + sign with the active profile -> FAKE-08-TV.wgt (your own TV)
 #   make release TZ_PROFILE=<profile>   # no PC address, signed with <profile>
-#                        #   -> release/FAKE-08.wgt (for a GitHub release)
+#                        #   -> release/FAKE-08-TV.wgt (for a GitHub release)
 #   make serve           # desktop test at http://localhost:8000
 #   make serve-carts CARTS_DIR=<folder>   # share carts with the TV (tools/cart_server.py)
 #
@@ -16,7 +16,7 @@ BUILD := build
 OUT := app/fake08.js
 FAKE08_DIR ?= third_party/fake-08
 TZ ?= $(or $(shell command -v tz 2>/dev/null),$(HOME)/.tizen-extension-platform/server/sdktools/data/tools/tizen-core/tz)
-RELEASE_WGT := release/FAKE-08.wgt
+RELEASE_WGT := release/FAKE-08-TV.wgt
 
 # The PC the TV downloads carts from. `make` and `make wgt` default it to this
 # machine's LAN address, baked into app/settings.js; it can be changed on the
@@ -61,7 +61,7 @@ LDFLAGS := -O3 -sSINGLE_FILE=1 -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 \
            -sEXPORTED_FUNCTIONS=_main,_malloc,_free,_p8_run_cart,_p8_stop_cart \
            -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString,stringToUTF8,lengthBytesUTF8
 
-.PHONY: all wgt release serve serve-carts clean FORCE
+.PHONY: all wgt release release-stage serve serve-carts clean FORCE
 
 # Shipped in the package next to the code they cover.
 LICENSES := app/LICENSE app/LICENSE-FAKE-08.md app/THIRD-PARTY-NOTICES.md
@@ -112,8 +112,8 @@ $(BUILD)/fake08/libs/z8lua/%.o: $(FAKE08_DIR)/libs/z8lua/%.c Makefile $(CORE_STA
 wgt: $(OUT) app/settings.js $(LICENSES)
 	$(TZ) build -w app
 	$(TZ) pack -w app
-	cp app/Debug/app.wgt FAKE-08.wgt
-	@ls -l FAKE-08.wgt
+	cp app/Debug/app.wgt FAKE-08-TV.wgt
+	@ls -l FAKE-08-TV.wgt
 
 # release: for other people's TVs, from a staged copy of app/ with an empty PC
 # address, signed with TZ_PROFILE (for example a profile with the generic Tizen
@@ -122,15 +122,22 @@ wgt: $(OUT) app/settings.js $(LICENSES)
 # the active profile is switched for the build and switched back afterwards,
 # and the signers are printed.
 RELEASE_STAGE := $(BUILD)/release/app
-APP_FILES := config.xml tizen_web_project.yaml icon.png index.html main.js sources.js style.css
+APP_FILES := config.xml icon.png index.html main.js sources.js style.css
 
-release: $(OUT) $(LICENSES)
-	@test -n "$(TZ_PROFILE)" || { echo "make release: set TZ_PROFILE=<signing profile> (tz security-profiles list)"; exit 1; }
-	@$(TZ) security-profiles list | grep -qxF '$(TZ_PROFILE)' || { echo "make release: no security profile named '$(TZ_PROFILE)'"; exit 1; }
+# release-stage: exactly the files of the release package, with an empty PC
+# address, in $(RELEASE_STAGE). The GitHub release workflow signs this folder
+# with the Tizen Studio CLI.
+release-stage: $(OUT) $(LICENSES)
 	rm -rf $(BUILD)/release
 	mkdir -p $(RELEASE_STAGE)
 	cp $(addprefix app/,$(APP_FILES)) $(OUT) $(LICENSES) $(RELEASE_STAGE)/
 	$(call settings_js,) > $(RELEASE_STAGE)/settings.js
+
+release:
+	@test -n "$(TZ_PROFILE)" || { echo "make release: set TZ_PROFILE=<signing profile> (tz security-profiles list)"; exit 1; }
+	@$(TZ) security-profiles list | grep -qxF '$(TZ_PROFILE)' || { echo "make release: no security profile named '$(TZ_PROFILE)'"; exit 1; }
+	@$(MAKE) --no-print-directory release-stage
+	cp app/tizen_web_project.yaml $(RELEASE_STAGE)/
 	@prev=$$($(TZ) security-profiles list | sed -n 's/^Current Active Profile: //p'); \
 	 trap '[ -n "$$prev" ] && $(TZ) security-profiles set-active "$$prev" >/dev/null && echo "Active profile back to $$prev"' EXIT; \
 	 $(TZ) security-profiles set-active '$(TZ_PROFILE)' && \
@@ -150,4 +157,4 @@ serve-carts:
 FORCE:
 
 clean:
-	rm -rf $(BUILD) $(OUT) app/settings.js $(LICENSES) app/Debug FAKE-08.wgt release
+	rm -rf $(BUILD) $(OUT) app/settings.js $(LICENSES) app/Debug FAKE-08-TV.wgt release

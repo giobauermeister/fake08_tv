@@ -1,0 +1,96 @@
+# Builds the TizenBrew release package on a version tag and attaches it to a
+# GitHub release:
+#
+#   git tag v1.0.1 && git push origin v1.0.1      (the tag must match app/config.xml)
+#
+# Signing uses a throwaway author certificate created for each run plus the
+# Tizen SDK's public distributor certificate, so the repository holds no keys
+# or passwords. TizenBrew Installer re-signs the package with the user's own
+# Samsung certificate on Tizen 7+ TVs; 2017-2021 TVs install it as it is, and
+# since every release has a new author key, they update by reinstalling.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  EMSDK_VERSION: 4.0.7
+  TIZEN_STUDIO_VERSION: '5.6'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check that the tag matches app/config.xml
+        run: |
+          version=$(sed -n 's/.*<widget[^>]* version="\([^"]*\)".*/\1/p' app/config.xml)
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version=\"$version\" in app/config.xml"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install Emscripten
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
+          "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
+
+      - name: Build
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          make -j"$(nproc)" release-stage
+
+      - name: Install the Tizen Studio CLI
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/tizen-installer" \
+            "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_STUDIO_VERSION}/web-cli_Tizen_Studio_${TIZEN_STUDIO_VERSION}_ubuntu-64.bin"
+          chmod +x "$RUNNER_TEMP/tizen-installer"
+          "$RUNNER_TEMP/tizen-installer" --accept-license "$RUNNER_TEMP/tizen-studio"
+          echo "$RUNNER_TEMP/tizen-studio/tools/ide/bin" >> "$GITHUB_PATH"
+
+      # The same certificates as TizenBrew's "TizenBrew-Old" profile: an author
+      # certificate from the Tizen developer CA (new for every run, never
+      # stored) and the SDK's public distributor certificate.
+      - name: Sign with a throwaway author certificate
+        run: |
+          password=$(openssl rand -hex 16)
+          echo "::add-mask::$password"
+          data="$RUNNER_TEMP/tizen-studio-data"
+          certs="$RUNNER_TEMP/tizen-studio/tools/certificate-generator/certificates"
+          tizen certificate -a fake08 -n FAKE-08 -p "$password" -f fake08-author
+          tizen security-profiles add -n fake08-release \
+            -a "$data/keystore/author/fake08-author.p12" -p "$password" \
+            -c "$certs/developer/tizen-developer-ca.cer"
+          tizen cli-config "profiles.path=$data/profile/profiles.xml"
+          tizen package -t wgt -s fake08-release -o "$RUNNER_TEMP/package" -- build/release/app
+          # tizen package names the file after <name> in config.xml.
+          cp "$RUNNER_TEMP/package/"*.wgt FAKE-08-TV.wgt
+
+      - name: Check the package
+        run: |
+          unzip -l FAKE-08-TV.wgt
+          expected="LICENSE LICENSE-FAKE-08.md THIRD-PARTY-NOTICES.md author-signature.xml config.xml fake08.js icon.png index.html main.js settings.js signature1.xml sources.js style.css"
+          actual=$(unzip -Z1 FAKE-08-TV.wgt | sort | tr '\n' ' ' | sed 's/ $//')
+          if [ "$actual" != "$(echo $expected | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')" ]; then
+            echo "::error::Unexpected files in the package: $actual"; exit 1
+          fi
+          if ! unzip -p FAKE-08-TV.wgt settings.js | grep -q 'pcUrl: ""'; then
+            echo "::error::The package has a PC address in settings.js"; exit 1
+          fi
+          sh tools/wgt-signers.sh FAKE-08-TV.wgt
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" FAKE-08-TV.wgt \
+            --title "FAKE-08-TV $VERSION" --generate-notes

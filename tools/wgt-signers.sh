@@ -2,7 +2,7 @@
 # Prints who signed a Tizen package: the certificate issuer of the author
 # signature and of the distributor signature.
 #
-#   tools/wgt-signers.sh release/FAKE-08.wgt
+#   tools/wgt-signers.sh release/FAKE-08-TV.wgt
 #
 # The Tizen tools fall back to the active security profile without a warning,
 # so `make release` runs this to show which certificates were actually used.

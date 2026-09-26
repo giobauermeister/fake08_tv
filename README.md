@@ -47,12 +47,16 @@ first step, and a Bluetooth gamepad paired with the TV.
    Tizen 7 or later (2022 and newer TVs) it asks you to sign in to a Samsung
    account, with a QR code, to create a Samsung certificate for your TV.
 5. **Install FAKE-08.** Choose **Install from GitHub** and enter
-   `giobauermeister/fake08_tv`. The app appears in the TV's apps as FAKE-08.
+   `giobauermeister/fake08_tv`. The app appears in the TV's apps as FAKE-08-TV.
 
 The Samsung certificate that TizenBrew Installer signs the app with **lasts one
 year**. Install the app again the same way before it expires, or it stops
-starting. Older TVs (Tizen 3 to 6) install the release as it is, without a
-Samsung account.
+starting. The same step installs a new version.
+
+On 2017–2021 TVs (Tizen 3 to 6) TizenBrew Installer needs no Samsung account and
+installs the release as it is. There, a new version installs only after you
+**uninstall** the old one, which also resets the app's settings and the games'
+saved data.
 
 ## Add games
 
@@ -221,53 +225,48 @@ the `tz` tool from the Tizen extension for VS Code (the Makefile uses `tz` from
 source ~/emsdk/emsdk_env.sh
 make -j$(nproc)      # -> app/fake08.js (~0.9 MB: the engine, wasm inlined)
 make serve           # desktop test at http://localhost:8000
-make wgt             # + tz build / tz pack with the active profile -> FAKE-08.wgt
-make release TZ_PROFILE=<profile>   # -> release/FAKE-08.wgt, for a GitHub release
+make wgt             # + tz build / tz pack with the active profile -> FAKE-08-TV.wgt
+make release TZ_PROFILE=<profile>   # -> release/FAKE-08-TV.wgt, signed locally
 make serve-carts CARTS_DIR=<folder> # share carts with the TV, see above
 ```
 
 - `make` and `make wgt` bake this PC's LAN address into `app/settings.js`
   (`PC_URL=` overrides it), so a TV with that build finds
-  `http://<this PC>:8808` without any typing. Install `FAKE-08.wgt` from the
+  `http://<this PC>:8808` without any typing. Install `FAKE-08-TV.wgt` from the
   Tizen extension, or with `tz install` once `sdb` sees the TV.
-- `make release` builds from a staged copy of `app/` with **no** PC address and
-  signs it with the security profile `TZ_PROFILE`, then prints which
-  certificates signed it. `tz` quietly signs with the *active* profile whatever
-  profile it is told to use, so the target switches the active profile for the
-  build and switches it back afterwards.
+- `make release` builds from a staged copy of `app/` with **no** PC address
+  (`make release-stage`) and signs it with the security profile `TZ_PROFILE`,
+  then prints which certificates signed it. `tz` quietly signs with the
+  *active* profile whatever profile it is told to use, so the target switches
+  the active profile for the build and switches it back afterwards. Published
+  releases come from the workflow below instead.
 - `FAKE08_DIR` (default `third_party/fake-08`, the submodule) builds against
   another FAKE-08 tree, such as a local clone of the fork.
 
-### Signing a release
+### Releasing
 
-TizenBrew Installer re-signs a release with the user's own Samsung certificate
-on Tizen 7 and later, but installs it unchanged on older TVs. So sign the
-release with the generic Tizen SDK certificates, as TizenBrew's own
-"TizenBrew-Old" profile does, **not** with a Samsung distributor certificate:
-that one is tied to your TV's device ID and installs nowhere else. With `SDK`
-being the extension's `server/sdktools/data/tools/certificate-generator`:
+Releases are built by GitHub Actions
+([.github/workflows/release.yml](.github/workflows/release.yml)). Set the new
+version in `app/config.xml`, commit, and push a matching tag:
 
 ```sh
-tz cert -n fake08 -p '<author password>' -f fake08-author   # a Tizen author certificate
-tz security-profiles add -n fake08-release \
-    -a <path to fake08-author.p12> -p '<author password>' \
-    -c $SDK/certificates/developer/tizen-developer-ca.cer \
-    -d $SDK/certificates/distributor/sdk-public/tizen-distributor-signer.p12 \
-    -P tizenpkcs12passfordsigner \
-    -C $SDK/certificates/distributor/sdk-public/tizen-distributor-ca.cer
-make release TZ_PROFILE=fake08-release
+git tag v1.0.1 && git push origin v1.0.1
 ```
 
-Keep the author certificate: a later release signed with another author key
-cannot update the installed app on older TVs. `tizenpkcs12passfordsigner` is the
-published password of the SDK's public distributor certificate. The release has
-exactly one `.wgt`, as TizenBrew Installer installs the first `.wgt` or `.tpk`
-of the latest GitHub release.
+The workflow builds the app, signs it and attaches `FAKE-08-TV.wgt` to a GitHub
+release for that tag, the one file TizenBrew Installer looks for. It signs with
+an author certificate created for that run and the Tizen SDK's public
+distributor certificate, so the repository holds no keys or passwords:
+
+- On 2022+ TVs TizenBrew Installer replaces the signature with the user's own
+  Samsung certificate, so the key doesn't matter.
+- 2017–2021 TVs install the package as it is. Every release has a new author
+  key, so updating there means uninstalling first (see
+  [Install on your TV](#install-on-your-tv)).
 
 A copy installed from a `make wgt` build, signed with your own Samsung
-certificate, is not updated by a package signed with a different author
-certificate: uninstall it first, which also clears its settings and
-`cartdata()` saves.
+certificate, is not updated by a release either: uninstall it first, which also
+clears its settings and `cartdata()` saves.
 
 ### The core
 
