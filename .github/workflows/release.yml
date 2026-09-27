@@ -62,6 +62,16 @@ jobs:
       # stored) and the SDK's public distributor certificate.
       - name: Sign with a throwaway author certificate
         run: |
+          # Tizen's signing code only reads .p12 files in the old encryption
+          # format, which Java writes by default only up to 8u292. Run the CLI
+          # on the Java 8 that the Tizen installer sets up, and ask any newer
+          # Java for the old format too.
+          if [ -x "$HOME/.package-manager/jdk/bin/java" ]; then
+            export JAVA_HOME="$HOME/.package-manager/jdk"
+            export PATH="$JAVA_HOME/bin:$PATH"
+          fi
+          export JAVA_TOOL_OPTIONS="-Dkeystore.pkcs12.legacy"
+          java -version
           password=$(openssl rand -hex 16)
           echo "::add-mask::$password"
           data="$RUNNER_TEMP/tizen-studio-data"
