@@ -71,7 +71,13 @@ jobs:
             -a "$data/keystore/author/fake08-author.p12" -p "$password" \
             -c "$certs/developer/tizen-developer-ca.cer"
           tizen cli-config "profiles.path=$data/profile/profiles.xml"
-          tizen package -t wgt -s fake08-release -o "$RUNNER_TEMP/package" -- build/release/app
+          mkdir -p "$RUNNER_TEMP/package"
+          if ! tizen package -t wgt -s fake08-release -o "$RUNNER_TEMP/package" \
+                 -- "$GITHUB_WORKSPACE/build/release/app"; then
+            find "$RUNNER_TEMP" "$GITHUB_WORKSPACE" -path '*/cli/logs/cli.log' \
+              -exec echo "== {}" \; -exec tail -n 80 {} \;
+            exit 1
+          fi
           # tizen package names the file after <name> in config.xml.
           cp "$RUNNER_TEMP/package/"*.wgt FAKE-08-TV.wgt
 
