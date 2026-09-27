@@ -74,18 +74,23 @@ jobs:
           data="$RUNNER_TEMP/tizen-studio-data"
           certs="$RUNNER_TEMP/tizen-studio/tools/certificate-generator/certificates"
           tizen certificate -a fake08 -n FAKE-08 -p "$password" -f fake08-author
-          # Written by hand, as TizenBrew's workflow does: `tizen
-          # security-profiles add` keeps the passwords in the desktop keyring,
-          # which a runner doesn't have, and signing then fails with "Invaild
-          # password". tizenpkcs12passfordsigner is the published password of
-          # the SDK's public distributor certificate.
+          # profiles.xml is written by hand: `tizen security-profiles add` keeps
+          # the passwords in the desktop keyring, which a runner doesn't have.
+          # A password attribute that is not a ".pwd" keyring reference must be
+          # in Tizen's legacy encoding: Triple-DES (ECB) with the CLI's fixed
+          # key "KYANINYLhijklmnopqrstuvw", then Base64. tizenpkcs12passfordsigner
+          # is the published password of the SDK's public distributor certificate.
+          tizen_pw() {
+            printf '%s' "$1" | openssl enc -des-ede3 -nosalt \
+              -K 4b59414e494e594c68696a6b6c6d6e6f7071727374757677 | base64 -w0
+          }
           mkdir -p "$data/profile"
           cat > "$data/profile/profiles.xml" <<EOF
           <?xml version="1.0" encoding="UTF-8" standalone="no"?>
           <profiles active="fake08-release" version="3.1">
           <profile name="fake08-release">
-          <profileitem ca="$certs/developer/tizen-developer-ca.cer" distributor="0" key="$data/keystore/author/fake08-author.p12" password="$password" rootca=""/>
-          <profileitem ca="$certs/distributor/tizen-distributor-ca.cer" distributor="1" key="$certs/distributor/tizen-distributor-signer.p12" password="tizenpkcs12passfordsigner" rootca=""/>
+          <profileitem ca="$certs/developer/tizen-developer-ca.cer" distributor="0" key="$data/keystore/author/fake08-author.p12" password="$(tizen_pw "$password")" rootca=""/>
+          <profileitem ca="$certs/distributor/tizen-distributor-ca.cer" distributor="1" key="$certs/distributor/tizen-distributor-signer.p12" password="$(tizen_pw tizenpkcs12passfordsigner)" rootca=""/>
           <profileitem ca="" distributor="2" key="" password="" rootca=""/>
           </profile>
           </profiles>
