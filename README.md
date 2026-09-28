@@ -1,5 +1,7 @@
 # FAKE-08 for Samsung TVs
 
+![FAKE-08 running on a Samsung TV](cover.jpg)
+
 This is a side/hobby project. I wanted a way to easily play PICO8 games on my TV. Many things are made with AI here.
 
 A cart player for Samsung Tizen TVs: it plays `.p8` and `.p8.png` carts made
