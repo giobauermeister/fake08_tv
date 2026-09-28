@@ -98,7 +98,7 @@ file name. Until any games are found, the launcher explains these options.
 | Pause menu (continue / reset cart / exit to menu) | Home (b16) | Enter, P, Esc | Return |
 | Leave the cart immediately | hold Home for 1.5 s | – | – |
 | Launcher: choose / play | D-pad / A | arrows / Enter | – |
-| Launcher: settings (pad layout, jump button, screen size, PC address, USB rescan) | Home | S | – |
+| Launcher: settings (pad layout, jump button, screen size, PC address) | Home | S | – |
 | Launcher: exit the app | – | Esc | Return |
 
 Other buttons do nothing. The remote is only needed for Return, and for
@@ -202,10 +202,11 @@ folder. The app reads both with Tizen's filesystem API, which needs the
   green **TV** badge. How files get there depends on the TV: its file manager
   may or may not copy from a USB stick into Documents.
 
-Both are rescanned at start-up, whenever the settings dialog opens, and when
-the app comes back to the front; USB also when a drive is plugged in or
-removed. The header and the settings show one status line each, such as
-"USB: 1 games" or "TV Documents: no PICO8 folder".
+Both are rescanned at start-up and when the app comes back to the front; USB
+also when a drive is plugged in or removed. A rescan only reads carts that are
+new or changed (by size and date) and drops the ones that are gone, so the
+games already listed stay on screen while it runs. The header shows one status
+per source, such as "USB: 1 games" or "TV Documents: no PICO8 folder".
 
 ## Build from source
 

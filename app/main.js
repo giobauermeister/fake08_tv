@@ -290,11 +290,8 @@
   function showSources() {
     // One line only, so the header (and the grid under it) never changes
     // height.
-    var local = CartSources.usb.status + '  ·  ' + CartSources.tv.status;
-    var text = CartSources.pc.status + '  ·  ' + local;
+    var text = CartSources.pc.status + '  ·  ' + CartSources.usb.status + '  ·  ' + CartSources.tv.status;
     if (sourcesLabel.textContent !== text) { sourcesLabel.textContent = text; }
-    var el = document.getElementById('usbstate');
-    if (el.textContent !== local) { el.textContent = local; }
   }
 
   // ---------------------------------------------------------------- PC address
@@ -373,7 +370,6 @@
 
   function openDialog() {
     dialogOpen = true;
-    CartSources.scanLocal();
     pcInput.value = CartSources.pc.url || savedPcUrl() || defaultPcUrl();
     document.getElementById('pcdefault').textContent = defaultPcUrl() || 'none';
     selectedRow = 0;

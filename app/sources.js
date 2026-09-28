@@ -18,8 +18,9 @@
     onChange: null,             // function (changedRoots): the grid needs rebuilding
     onGameChanged: null,        // function (gameDir): files of that PC game changed
     pc: { url: '', status: 'PC: not set', files: {}, busy: false, playingGame: '' },
-    usb: { status: 'USB: not scanned', scanning: false },
-    tv: { status: 'TV: not scanned', scanning: false }
+    // Local sources: files maps each copied cart to the size:mtime it had.
+    usb: { name: 'USB', root: '/usb', status: 'USB: scanning...', scanning: false, again: false, files: {} },
+    tv: { name: 'TV', root: '/tv', status: 'TV: scanning...', scanning: false, again: false, files: {} }
   };
 
   function FS() { return window.Module.FS; }
@@ -164,22 +165,23 @@
     (function next() { if (i >= items.length) { done(); } else { fn(items[i++], next); } }());
   }
 
-  function copyCarts(dir, target, done) {
+  // Lists the carts under dir (and its carts/ subfolder) as
+  // found[<target>/<name>] = file, without reading them.
+  function listCarts(dir, target, found, done) {
     listFiles(dir, function (files) {
       each(files, function (f, next) {
         if (f.isDirectory && /^carts$/i.test(f.name)) {
-          copyCarts(f, target + '/carts', next);
-        } else if (!f.isDirectory && CART_FILE.test(f.name)) {
-          readFile(f, function (bytes) { if (bytes) { writeFile(target + '/' + f.name, bytes); } next(); });
-        } else {
-          next();
+          listCarts(f, target + '/carts', found, next);
+          return;
         }
+        if (!f.isDirectory && CART_FILE.test(f.name)) { found[target + '/' + f.name] = f; }
+        next();
       }, done);
     });
   }
 
-  // <root>/PICO8/<Game>/... (or FAKE08/) -> <target>/<Game>/...; done(games, note).
-  function scanRoot(root, target, done) {
+  // <root>/PICO8/<Game>/... (or FAKE08/) -> found[<target>/<Game>/...]; done(games, note).
+  function scanRoot(root, target, found, done) {
     listFiles(root, function (entries) {
       var dir = null;
       entries.forEach(function (e) { if (!dir && e.isDirectory && /^(pico-?8|fake-?08)$/i.test(e.name)) { dir = e; } });
@@ -189,68 +191,101 @@
         each(games, function (g, next) {
           if (!g.isDirectory || g.name.charAt(0) === '.') { next(); return; }
           count++;
-          copyCarts(g, target + '/' + g.name, next);
+          listCarts(g, target + '/' + g.name, found, next);
         }, function () { done(count, ''); });
       });
     });
   }
 
+  function fileKey(f) {
+    var t = f.modified && f.modified.getTime ? f.modified.getTime() : '';
+    return f.fileSize + ':' + t;
+  }
+
+  // Deletes a cart and the folders it leaves empty, up to the source's root.
+  function removeCart(path, root) {
+    try { FS().unlink(path); } catch (e) { /* gone */ }
+    for (var dir = path.substring(0, path.lastIndexOf('/')); dir.length > root.length;
+         dir = dir.substring(0, dir.lastIndexOf('/'))) {
+      try { FS().rmdir(dir); } catch (e) { return; }   // not empty
+    }
+  }
+
+  // Brings a local source's copy in line with what was found: only new or
+  // changed carts are read and gone ones removed, so the grid never sees the
+  // source empty mid-scan. done(anyChange).
+  function syncCarts(src, found, done) {
+    var any = false;
+    Object.keys(src.files).forEach(function (p) {
+      if (!found[p]) { removeCart(p, src.root); delete src.files[p]; any = true; }
+    });
+    each(Object.keys(found), function (p, next) {
+      var f = found[p], key = fileKey(f);
+      if (src.files[p] === key) { next(); return; }
+      readFile(f, function (bytes) {
+        if (bytes) { writeFile(p, bytes); src.files[p] = key; any = true; }
+        next();
+      });
+    }, function () { done(any); });
+  }
+
   function hasTizenFs() { return !!(window.tizen && tizen.filesystem); }
+
+  function errorText(e) { return e && (e.name || e.message) || String(e); }
+
+  // Runs scan(done) for a local source, one at a time; a request made
+  // meanwhile (a drive plugged in mid-scan) runs once it ends. scan calls
+  // done(found, status), with found null when nothing could be read, which
+  // keeps the carts already copied.
+  function runScan(src, scan) {
+    if (!hasTizenFs()) { src.status = src.name + ': only on the TV'; return; }
+    if (src.scanning) { src.again = true; return; }
+    src.scanning = true;
+    src.again = false;
+    var finish = function (status, any) {
+      src.status = status;
+      if (any) { changed([src.root]); }
+      src.scanning = false;
+      if (src.again) { runScan(src, scan); }
+    };
+    try {
+      scan(function (found, status) {
+        if (!found) { finish(status, false); return; }
+        syncCarts(src, found, function (any) { finish(status, any); });
+      });
+    } catch (e) { finish(src.name + ' error: ' + errorText(e), false); }
+  }
 
   // USB drives: every storage the TV lists as external or "removable_..."
   // (a Q60D reports a stick as "removable_sda1 EXTERNAL MOUNTED").
   S.scanUsb = function () {
-    var usb = S.usb;
-    if (!hasTizenFs()) { usb.status = 'USB: only on the TV'; return; }
-    if (usb.scanning) { return; }
-    usb.scanning = true;
-    usb.status = 'USB: scanning...';
-    var fail = function (e) {
-      usb.scanning = false;
-      usb.status = 'USB error: ' + (e && (e.name || e.message) || e);
-    };
-    try {
+    runScan(S.usb, function (done) {
       tizen.filesystem.listStorages(function (storages) {
         var drives = storages.filter(function (st) {
           return (st.type === 'EXTERNAL' || /^removable/i.test(st.label)) && st.state !== 'REMOVED';
         });
-        removeTree('/usb');
-        var total = 0;
+        var found = {}, total = 0;
         each(drives, function (d, next) {
           tizen.filesystem.resolve(d.label, function (root) {
-            scanRoot(root, '/usb', function (count) { total += count; next(); });
+            scanRoot(root, '/usb', found, function (count) { total += count; next(); });
           }, function () { next(); }, 'r');
         }, function () {
-          usb.scanning = false;
-          usb.status = !drives.length ? 'USB: no drive' : total ? 'USB: ' + total + ' games' : 'USB: no PICO8 folder';
-          changed(['/usb']);
+          done(found, !drives.length ? 'USB: no drive' : total ? 'USB: ' + total + ' games' : 'USB: no PICO8 folder');
         });
-      }, fail);
-    } catch (e) { fail(e); }
+      }, function (e) { done(null, 'USB error: ' + errorText(e)); });
+    });
   };
 
   // The TV's own Documents folder, same PICO8/<Game>/... layout, badge "TV".
   S.scanTv = function () {
-    var tv = S.tv;
-    if (!hasTizenFs()) { tv.status = 'TV: only on the TV'; return; }
-    if (tv.scanning) { return; }
-    tv.scanning = true;
-    try {
+    runScan(S.tv, function (done) {
       tizen.filesystem.resolve('documents', function (root) {
-        removeTree('/tv');
-        scanRoot(root, '/tv', function (count, note) {
-          tv.scanning = false;
-          tv.status = count ? 'TV: ' + count + ' games' : 'TV Documents: ' + (note || 'no games');
-          changed(['/tv']);
+        var found = {};
+        scanRoot(root, '/tv', found, function (count, note) {
+          done(found, count ? 'TV: ' + count + ' games' : 'TV Documents: ' + (note || 'no games'));
         });
-      }, function (e) {
-        tv.scanning = false;
-        tv.status = 'TV Documents: ' + (e && (e.name || e.message) || 'not accessible');
-      }, 'r');
-    } catch (e) {
-      tv.scanning = false;
-      tv.status = 'TV Documents: ' + e.message;
-    }
+      }, function (e) { done(null, 'TV Documents: ' + errorText(e)); }, 'r');
+    });
   };
 
   S.scanLocal = function () { S.scanUsb(); S.scanTv(); };

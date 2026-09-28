@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/giobauermeister/fake08_tv" version="1.0.0" viewmodes="maximized" width="1920" height="1080">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/giobauermeister/fake08_tv" version="1.0.1" viewmodes="maximized" width="1920" height="1080">
   <tizen:application id="Fake08Tv01.Fake08" package="Fake08Tv01" required_version="2.3"/>
   <content src="index.html"/>
   <name>FAKE-08-TV</name>
